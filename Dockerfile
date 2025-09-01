@@ -1,22 +1,16 @@
-FROM python:3.5-alpine  AS build-env
+FROM python:3.12-slim
 
-# This dockerfile allows you to use the amzon2csv.py command very easily
+WORKDIR /app
 
-# You can build the docker image with the command :
-# docker build --no-cache -t amazon2csv .
+RUN apt-get update && apt-get install -y \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
-# You can create a container and use the command with :
-# docker run -it --rm amazon2csv --keywords="Python programming" --maxproductnb=2
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+RUN playwright install chromium
+RUN playwright install-deps
 
-RUN pip install -U --no-cache-dir --target /app amazonscraper \
-&& find /app | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
+COPY . .
 
-FROM gcr.io/distroless/python3
-
-COPY --from=build-env /app /app
-
-ENV PYTHONPATH=/app
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
-
-ENTRYPOINT ["python", "/app/bin/amazon2csv.py"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
